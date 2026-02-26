@@ -1,0 +1,11 @@
+{
+    "name": "@escalated-dev/escalated-plugin-slack",
+    "version": "0.1.0",
+    "description": "Slack integration for notifications and ticket creation from Slack messages",
+    "main": "src/index.js",
+    "peerDependencies": {
+        "@escalated-dev/escalated": "^0.6.0",
+        "vue": "^3.4.0"
+    },
+    "keywords": ["escalated", "plugin", "slack", "notifications", "integration", "messaging"]
+}
