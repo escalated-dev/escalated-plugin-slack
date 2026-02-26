@@ -559,9 +559,6 @@ async function testConnection() {
     testResult.value = null;
 
     try {
-        // TODO: Implement Slack API call
-        // In production this would call the backend endpoint which
-        // calls Slack's auth.test to verify the bot token is valid.
         const response = await fetch(
             `/api/plugins/${props.pluginSlug}/test-connection`,
             {

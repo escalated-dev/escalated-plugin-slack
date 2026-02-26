@@ -323,9 +323,6 @@ export default defineEscalatedPlugin({
         // ------------------------------------------------------------------
 
         async function postMessage(channel, message) {
-            // TODO: Implement Slack API call
-            // In production this delegates to the backend API which in turn
-            // calls the Slack Web API chat.postMessage endpoint.
             try {
                 return await apiRequest('/post-message', {
                     method: 'POST',
@@ -338,9 +335,6 @@ export default defineEscalatedPlugin({
         }
 
         async function shareTicketToSlack(ticket) {
-            // TODO: Implement Slack API call
-            // Opens a dialog or posts a formatted ticket card to the
-            // resolved Slack channel.
             const channel = resolveChannel(ticket);
             if (!channel) {
                 console.warn('[slack] No channel resolved for ticket', ticket?.id);
