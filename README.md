@@ -22,12 +22,6 @@ Seamlessly connect Escalated with your Slack workspace for real-time ticket noti
 3. Click **Upload Plugin** and select the ZIP file
 4. Activate the plugin from the plugins list
 
-### Via Composer
-```bash
-composer require escalated-dev/escalated-plugin-slack
-```
-Then activate the plugin from **Settings > Plugins** in Escalated admin.
-
 ### Requirements
 - Escalated >= 0.6.0
 
