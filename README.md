@@ -1,29 +1,88 @@
-# Escalated Plugin: Slack Integration
+# @escalated-dev/plugin-slack
 
-Seamlessly connect Escalated with your Slack workspace for real-time ticket notifications, ticket creation from Slack messages, and bi-directional conversation sync between Slack threads and tickets.
+Slack integration plugin for Escalated, built with the TypeScript Plugin SDK.
 
-## Features (Planned)
-- OAuth2 Slack workspace connection
-- Real-time ticket notifications to Slack channels
-- Create tickets from Slack messages and emoji reactions
-- Bi-directional reply sync between Slack threads and tickets
-- Slash commands for ticket management (/escalated)
-- Interactive message buttons (assign, resolve, reply)
-- Channel-to-team/category mapping
-- Rich Block Kit message formatting
-- Per-agent notification preferences
-- SLA breach alerts
+Forwards ticket lifecycle events to Slack channels and handles incoming Slack webhooks.
 
-## Installation
+## Features
 
-### Via ZIP Upload
-1. Download the latest release ZIP from this repository
-2. In Escalated admin, go to **Settings > Plugins**
-3. Click **Upload Plugin** and select the ZIP file
-4. Activate the plugin from the plugins list
+- Notifies a Slack channel on ticket created, assigned, and resolved
+- Posts replies as threaded messages in linked Slack conversations
+- Channel mapping: route notifications per team or category
+- Event routing toggles (enable/disable individual events)
+- Slack Events API webhook support (with URL verification)
+- Admin settings page with connection test
 
-### Requirements
-- Escalated >= 0.6.0
+## Configuration
 
-## Status
-This plugin is in early development. See TODO.md for implementation status.
+| Field | Type | Description |
+|-------|------|-------------|
+| `bot_token` | password | OAuth bot token (`xoxb-…`). Required. |
+| `signing_secret` | password | Used to verify Slack webhook request signatures. |
+| `client_id` | text | Slack app client ID (for OAuth flows). |
+| `client_secret` | password | Slack app client secret (for OAuth flows). |
+| `workspace_name` | text | Display name of the connected workspace. |
+| `default_channel` | text | Fallback channel when no mapping matches (e.g. `general`). |
+| `channel_mappings` | json | Array of `{ source_type, source_id, source_name, slack_channel }` rules. |
+| `event_routing` | json | Object enabling/disabling individual event types. |
+
+## Action Hooks
+
+| Hook | Description |
+|------|-------------|
+| `ticket.created` | Posts a message to the resolved channel. |
+| `ticket.assigned` | Posts an assignment notice; optionally DMs the agent. |
+| `reply.created` | Posts a threaded reply in the linked Slack thread. |
+
+## Filter Hooks
+
+| Hook | Priority | Description |
+|------|----------|-------------|
+| `notification.channels` | 10 | Appends the Slack channel to the available notification channels list. |
+
+## Endpoints
+
+| Method | Path | Capability | Description |
+|--------|------|------------|-------------|
+| GET | `/settings` | `manage_settings` | Return current plugin configuration. |
+| POST | `/settings` | `manage_settings` | Save plugin configuration. |
+| POST | `/test-connection` | `manage_settings` | Test the bot token against `auth.test`. |
+| POST | `/post-message` | `escalated-agent` | Send a Slack message from the frontend. |
+
+## Webhooks
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/webhook` | Receives Slack Events API callbacks (URL verification + event routing). |
+
+Configure this URL in your Slack app's Event Subscriptions:
+```
+https://your-escalated-domain.com/webhooks/plugins/slack/webhook
+```
+
+## Package structure
+
+```
+escalated-plugin-slack-sdk/
+├── package.json
+├── tsconfig.json
+├── .gitignore
+├── src/
+│   ├── index.ts       # definePlugin() — backend
+│   └── client.ts      # SlackClient (API wrapper using ctx.http)
+├── frontend/
+│   ├── index.js       # defineEscalatedPlugin() — Vue frontend
+│   └── components/
+│       ├── SlackNotificationConfig.vue
+│       └── SlackChannelMapper.vue
+└── README.md
+```
+
+## Migration from PHP
+
+This SDK plugin replaces:
+- `escalated-plugin-slack/Plugin.php` — action/filter registrations
+- `escalated-plugin-slack/Services/SlackClient.php` — HTTP client (`src/client.ts`)
+- `escalated-plugin-slack/Support/Config.php` — replaced by `ctx.config`
+- `escalated-plugin-slack/Handlers/EventHandler.php` — replaced by `actions` handlers
+- `escalated-plugin-slack/Handlers/WebhookHandler.php` — replaced by `webhooks` handler
