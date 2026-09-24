@@ -1,5 +1,7 @@
 # Escalated Plugin: Slack
 
+[![Views](https://hits.sh/github.com/escalated-dev/escalated-plugin-slack.svg?style=flat&label=views&color=007ec6)](https://hits.sh/github.com/escalated-dev/escalated-plugin-slack/)
+
 **Website:** [escalated.dev](https://escalated.dev)
 
 Slack integration for Escalated that forwards ticket lifecycle events to Slack channels and handles incoming Slack webhooks. Supports channel mapping by team or category, event routing toggles, and the Slack Events API.
