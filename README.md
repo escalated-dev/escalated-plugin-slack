@@ -71,4 +71,4 @@ npm install @escalated-dev/plugin-slack
 
 ## License
 
-MIT
+MIT - Copyright (c) Escalated.dev. See [LICENSE](LICENSE).
