@@ -1,17 +1,22 @@
 {
   "name": "@escalated-dev/plugin-slack",
   "version": "0.1.0",
+  "type": "module",
   "description": "Slack notifications for ticket events — TypeScript SDK version",
   "main": "build/index.js",
   "types": "build/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "prepack": "npm run build"
   },
   "dependencies": {
-    "@escalated-dev/plugin-sdk": "*"
+    "@escalated-dev/plugin-sdk": "https://codeload.github.com/escalated-dev/escalated-plugin-sdk/tar.gz/60531340f45bf8d762a39875496a1bbeed482244"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.9.3",
+    "@types/node": "^20.19.0",
+    "tsx": "^4.21.0"
   }
 }
