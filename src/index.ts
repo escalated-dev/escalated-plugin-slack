@@ -1,6 +1,7 @@
 import { definePlugin } from '@escalated-dev/plugin-sdk'
 import type { PluginContext } from '@escalated-dev/plugin-sdk'
-import { SlackClient } from './client'
+import { SlackClient } from './client.js'
+import { handleSlackWebhook } from './webhook.js'
 
 // ---------------------------------------------------------------------------
 // Type helpers
@@ -103,7 +104,11 @@ export default definePlugin({
     { name: 'bot_token', label: 'Bot Token', type: 'password', required: true,
       help: 'OAuth bot token starting with xoxb-. Found in your Slack app settings.' },
     { name: 'signing_secret', label: 'Signing Secret', type: 'password',
-      help: 'Used to verify incoming Slack webhook signatures.' },
+      help: 'Required for all incoming Slack webhooks, including URL verification.' },
+    { name: 'workspace_id', label: 'Allowed Workspace ID', type: 'text',
+      help: 'Required for inbound messages. Use the Slack team ID, not its display name.' },
+    { name: 'inbound_channels', label: 'Allowed Inbound Channel IDs', type: 'json', default: [],
+      help: 'Explicit channel ID allowlist. Requires a durable host inbound adapter.' },
     { name: 'client_id', label: 'Client ID', type: 'text' },
     { name: 'client_secret', label: 'Client Secret', type: 'password' },
     { name: 'workspace_name', label: 'Workspace Name', type: 'text' },
@@ -367,25 +372,6 @@ export default definePlugin({
   // -------------------------------------------------------------------------
 
   webhooks: {
-    'POST /webhook': async (ctx, req) => {
-      const payload = req.body as Record<string, unknown>
-
-      // URL verification challenge
-      if (payload.type === 'url_verification') {
-        return { challenge: payload.challenge }
-      }
-
-      ctx.log.info('[slack] Webhook received', { type: payload.type })
-
-      // Route Slack events back as internal actions
-      if (payload.type === 'event_callback') {
-        const slackEvent = payload.event as Record<string, unknown> | undefined
-        if (slackEvent?.type === 'message') {
-          await ctx.emit('slack.message.received', slackEvent)
-        }
-      }
-
-      return { ok: true }
-    },
+    'POST /webhook': handleSlackWebhook,
   },
 })

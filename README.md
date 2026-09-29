@@ -8,11 +8,11 @@ Slack integration for Escalated that forwards ticket lifecycle events to Slack c
 
 ## Features
 
-- Notifies Slack channels on ticket created, assigned, and resolved events
-- Posts replies as threaded messages in linked Slack conversations
+- Notifies Slack channels on ticket created and assigned events
+- Posts public replies; threading requires a host-supplied Slack thread timestamp
 - Channel mapping rules to route notifications by team or category
 - Per-event routing toggles to enable or disable individual event types
-- Slack Events API webhook support with URL verification and signature validation
+- Authenticated Slack Events API callbacks, including URL verification
 - Admin settings page with connection test
 - Registers Slack as a notification channel
 
@@ -21,7 +21,9 @@ Slack integration for Escalated that forwards ticket lifecycle events to Slack c
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `bot_token` | password | Yes | OAuth bot token (`xoxb-...`). Found in your Slack app settings. |
-| `signing_secret` | password | No | Used to verify incoming Slack webhook request signatures. |
+| `signing_secret` | password | For inbound | Required for every incoming request, including URL verification. |
+| `workspace_id` | text | For messages | Allowed Slack team ID. |
+| `inbound_channels` | json | For messages | Explicit array of allowed Slack channel IDs. Empty disables ingestion. |
 | `client_id` | text | No | Slack app client ID for OAuth flows. |
 | `client_secret` | password | No | Slack app client secret for OAuth flows. |
 | `workspace_name` | text | No | Display name of the connected Slack workspace. |
@@ -37,7 +39,7 @@ Slack integration for Escalated that forwards ticket lifecycle events to Slack c
 
 ### Actions
 - `ticket.created` — Posts a notification to the resolved Slack channel with ticket details.
-- `ticket.assigned` — Posts an assignment notice to the channel; optionally DMs the assigned agent.
+- `ticket.assigned` — Posts an assignment notice to the channel.
 - `reply.created` — Posts a threaded reply in the linked Slack thread (skips internal notes).
 
 ### Filters
@@ -60,8 +62,29 @@ Slack integration for Escalated that forwards ticket lifecycle events to Slack c
 
 Configure this URL in your Slack app's Event Subscriptions:
 ```
-https://your-escalated-domain.com/webhooks/plugins/slack/webhook
+https://your-escalated-domain.com/support/webhooks/plugins/slack/webhook
 ```
+
+The prefix above is Laravel's default; use your host's configured prefix.
+Inbound requests require plugin HTTP contract version 1 in the SDK, runtime and
+host bridge. The SDK dependency is pinned to the merged contract source until a
+coordinated package release. The plugin builds as ESM, matching the runtime/SDK.
+
+Signatures use the exact original bytes, HMAC-SHA256, a five-minute timestamp
+window and a constant-time comparison, following [Slack's signing protocol](https://docs.slack.dev/authentication/verifying-requests-from-slack/).
+Missing credentials or raw bytes fail closed. Payloads are parsed from verified
+bytes, independently of the host's parsed request body. Bot, hidden and subtype
+events are ignored to prevent loops and unintended edits/deletions.
+
+**Inbound ticket processing is not available from this plugin alone.** A host
+adapter must durably accept `slack.message.received` and return
+`{accepted: true, event_id: "the-matching-event-id"}`. The emitted data includes
+the signed envelope bytes and headers so the host can authenticate it again,
+apply trusted tenant/identity routing, and persist a deduplicated event. A missing
+adapter or failed acceptance returns 503 for retry, rather than acknowledging a
+message that was dropped. This change does not supply that durable processor,
+claim arbitrary Slack text is verified email, or enable plugins in tenant mode.
+Outbound thread mapping and inbound ticket/reply ingestion remain host work.
 
 ## Installation
 
