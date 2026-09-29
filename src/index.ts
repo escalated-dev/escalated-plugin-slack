@@ -13,6 +13,8 @@ interface SlackSettings {
   client_id?: string
   client_secret?: string
   workspace_name?: string
+  workspace_id?: string
+  inbound_channels?: string[]
   default_channel?: string
   channel_mappings?: ChannelMapping[]
   event_routing?: Record<string, boolean>
@@ -35,6 +37,7 @@ interface TicketEvent {
   category_id?: string | number
   assigned_to?: string | number | null
   slack_thread_ts?: string
+  metadata?: { source?: string; slack?: { workspace?: string; channel?: string; thread_ts?: string } }
 }
 
 interface ReplyEvent {
@@ -43,6 +46,7 @@ interface ReplyEvent {
   body?: string
   author_name?: string
   is_internal_note?: boolean
+  metadata?: { source?: string }
 }
 
 // ---------------------------------------------------------------------------
@@ -50,6 +54,11 @@ interface ReplyEvent {
 // ---------------------------------------------------------------------------
 
 function resolveChannel(ticket: TicketEvent, settings: SlackSettings): string {
+  if (ticket.metadata?.source === 'slack') {
+    const origin = ticket.metadata.slack
+    return origin?.workspace === settings.workspace_id && typeof origin?.channel === 'string'
+      && settings.inbound_channels?.includes(origin.channel) ? origin.channel : ''
+  }
   const mappings = settings.channel_mappings ?? []
 
   for (const mapping of mappings) {
@@ -148,6 +157,7 @@ export default definePlugin({
   actions: {
     'ticket.created': async (event, ctx) => {
       const ticket = event as TicketEvent
+      if (ticket.metadata?.source === 'slack') return
       const settings = await getSettings(ctx)
 
       if (!isEventEnabled('ticket.created', settings)) return
@@ -232,7 +242,7 @@ export default definePlugin({
       if (!isEventEnabled('reply.created', settings)) return
 
       // Skip internal notes
-      if (reply.is_internal_note) return
+      if (reply.is_internal_note || reply.metadata?.source === 'slack') return
 
       const client = makeClient(ctx, settings)
       if (!client) return
@@ -243,7 +253,7 @@ export default definePlugin({
       await client.postMessage({
         channel,
         text: `Reply on ticket #${ticket.id} from ${reply.author_name ?? 'Agent'}: ${reply.body ?? ''}`,
-        thread_ts: ticket.slack_thread_ts,
+        thread_ts: ticket.metadata?.source === 'slack' ? ticket.metadata.slack?.thread_ts : ticket.slack_thread_ts,
       })
     },
   },

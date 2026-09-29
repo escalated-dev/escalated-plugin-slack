@@ -86,6 +86,14 @@ message that was dropped. This change does not supply that durable processor,
 claim arbitrary Slack text is verified email, or enable plugins in tenant mode.
 Outbound thread mapping and inbound ticket/reply ingestion remain host work.
 
+For Slack-origin tickets, a host can persist `metadata.source = "slack"` and
+`metadata.slack = {workspace, channel, thread_ts}`. Host public replies return to
+that thread only while its workspace/channel still matches the plugin allowlist.
+Slack-origin ticket creation and replies marked `metadata.source = "slack"` are
+not echoed. Internal notes are never posted. The host must dispatch the existing
+ticket/reply hooks; this plugin does not itself wire framework event listeners or
+persist thread mappings for ordinary outbound ticket notifications.
+
 ## Installation
 
 ```bash
