@@ -75,12 +75,31 @@ it('fails closed for missing credentials, old bridges and unconfigured inbound r
   assert.equal(emitted.length, 0)
 })
 
-it('rejects foreign workspaces and channels', async () => {
-  for (const body of [{ ...payload, team_id: 'TOTHER' }, { ...payload, event: { ...payload.event, channel: 'COTHER' } }]) {
+it('acknowledges foreign workspaces, channels, direct messages and blank text without emitting', async () => {
+  for (const body of [{ ...payload, team_id: 'TOTHER' }, { ...payload, event: { ...payload.event, channel: 'COTHER' } },
+    { ...payload, event: { ...payload.event, channel: 'D123' } }, { ...payload, event: { ...payload.event, text: ' \n\t ' } }]) {
     const { ctx, emitted } = context()
-    assert.equal((await handleSlackWebhook(ctx, request(body))).status, 403)
+    const response = await handleSlackWebhook(ctx, request(body))
+    assert.equal(response.status, 200)
+    assert.deepEqual(response.body, { ignored: true })
     assert.equal(emitted.length, 0)
   }
+})
+
+it('forwards text beyond 65,535 UTF-16 units for the host to accept or dead-letter', async () => {
+  const text = '\u{1F4E6}'.repeat(40000)
+  assert.ok(text.length > 65535)
+  const { ctx, emitted } = context()
+  assert.equal((await handleSlackWebhook(ctx, request({ ...payload, event: { ...payload.event, text } }))).status, 202)
+  assert.equal((emitted[0].data as any).event.text, text)
+})
+
+it('acknowledges an event the host authenticated and chose not to route', async () => {
+  const { ctx, emitted } = context({}, { ignored: true })
+  const response = await handleSlackWebhook(ctx, request())
+  assert.equal(response.status, 200)
+  assert.deepEqual(response.body, { ignored: true })
+  assert.equal(emitted.length, 1)
 })
 
 it('ignores bot messages, edits, deletion and hidden events', async () => {

@@ -44,15 +44,20 @@ export async function handleSlackWebhook(ctx: PluginContext, req: EndpointReques
   if (typeof settings.workspace_id !== 'string' || settings.workspace_id.length === 0
     || !Array.isArray(settings.inbound_channels) || settings.inbound_channels.length === 0)
     return httpResponse(503, { error: 'Inbound workspace and channels are not configured' })
+  // Authenticated events outside the allowlist are acknowledged, not refused:
+  // Slack retries non-2xx responses and can disable a failing subscription.
   if (payload.team_id !== settings.workspace_id || !settings.inbound_channels.includes(event.channel))
-    return httpResponse(403, { error: 'Workspace or channel is not allowed' })
+    return httpResponse(200, { ignored: true })
   if (typeof payload.event_id !== 'string' || !/^Ev[A-Za-z0-9]+$/.test(payload.event_id)
     || typeof event.channel !== 'string' || !/^[CGD][A-Za-z0-9]+$/.test(event.channel)
     || typeof event.user !== 'string' || !/^[UW][A-Za-z0-9]+$/.test(event.user)
     || typeof event.ts !== 'string' || !/^[0-9]+\.[0-9]+$/.test(event.ts)
     || (event.thread_ts !== undefined && (typeof event.thread_ts !== 'string' || !/^[0-9]+\.[0-9]+$/.test(event.thread_ts)))
-    || typeof event.text !== 'string' || event.text.trim() === '' || event.text.length > 65535)
+    || typeof event.text !== 'string')
     return httpResponse(400, { error: 'Invalid message' })
+  // Text length is bounded only by the 1 MiB signed body; the host dead-letters
+  // text it cannot store rather than having Slack retry a rejection.
+  if (event.text.trim() === '') return httpResponse(200, { ignored: true })
   try {
     const receipt: unknown = await ctx.emit('slack.message.received', {
       event_id: payload.event_id, team_id: payload.team_id, event,
@@ -61,6 +66,8 @@ export async function handleSlackWebhook(ctx: PluginContext, req: EndpointReques
     })
     if (record(receipt) && receipt.accepted === true && receipt.event_id === payload.event_id)
       return httpResponse(202, { ok: true })
+    // The host authenticated the bytes and deliberately does not route this event.
+    if (record(receipt) && receipt.ignored === true) return httpResponse(200, { ignored: true })
   } catch {
     ctx.log.warn('[slack] Host did not durably accept the inbound event')
   }

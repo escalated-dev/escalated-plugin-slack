@@ -74,11 +74,17 @@ Signatures use the exact original bytes, HMAC-SHA256, a five-minute timestamp
 window and a constant-time comparison, following [Slack's signing protocol](https://docs.slack.dev/authentication/verifying-requests-from-slack/).
 Missing credentials or raw bytes fail closed. Payloads are parsed from verified
 bytes, independently of the host's parsed request body. Bot, hidden and subtype
-events are ignored to prevent loops and unintended edits/deletions.
+events are ignored to prevent loops and unintended edits/deletions. Authenticated
+events outside `workspace_id`/`inbound_channels` (including direct messages) and
+whitespace-only messages are acknowledged with 200 `{"ignored": true}` rather
+than refused, because Slack retries non-2xx responses and can disable a failing
+subscription. Message text has no separate length limit beyond the 1 MiB signed
+body; the host decides whether it can store it.
 
 **Inbound ticket processing is not available from this plugin alone.** A host
 adapter must durably accept `slack.message.received` and return
-`{accepted: true, event_id: "the-matching-event-id"}`. The emitted data includes
+`{accepted: true, event_id: "the-matching-event-id"}`, or `{ignored: true}` for an
+authenticated event it deliberately does not route (answered with 200). The emitted data includes
 the signed envelope bytes and headers so the host can authenticate it again,
 apply trusted tenant/identity routing, and persist a deduplicated event. A missing
 adapter or failed acceptance returns 503 for retry, rather than acknowledging a
@@ -92,7 +98,9 @@ that thread only while its workspace/channel still matches the plugin allowlist.
 Slack-origin ticket creation and replies marked `metadata.source = "slack"` are
 not echoed. Internal notes are never posted. The host must dispatch the existing
 ticket/reply hooks; this plugin does not itself wire framework event listeners or
-persist thread mappings for ordinary outbound ticket notifications.
+persist thread mappings for ordinary outbound ticket notifications. The Laravel
+host does not currently dispatch `ticket.created` or `reply.created` to SDK
+plugins, so origin-thread replies and echo suppression do not run there.
 
 ## Installation
 
