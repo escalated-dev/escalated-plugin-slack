@@ -1,6 +1,6 @@
 {
   "name": "@escalated-dev/plugin-slack",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Slack notifications for ticket events — TypeScript SDK version",
   "main": "build/index.js",
