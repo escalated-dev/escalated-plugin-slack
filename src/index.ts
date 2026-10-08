@@ -106,7 +106,7 @@ function makeClient(ctx: PluginContext, settings: SlackSettings): SlackClient | 
 
 export default definePlugin({
   name: 'slack',
-  version: '0.1.0',
+  version: '0.2.0',
   description: 'Slack notifications for ticket events',
 
   config: [
